@@ -125,11 +125,7 @@ def origin_allowed(origin: str) -> bool:
     host = urlparse(origin).hostname or ""
     if host in {"127.0.0.1", "localhost"}:
         return True
-    if host.endswith(".github.io"):
-        return True
-    if host.endswith(".up.railway.app") or host.endswith(".railway.app"):
-        return True
-    return False
+    return host.endswith(".github.io")
 
 
 def _json_bytes(payload: dict, status: int = 200) -> tuple[int, bytes]:

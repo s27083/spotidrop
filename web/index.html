@@ -241,30 +241,15 @@
     const $ = (id) => document.getElementById(id);
     const errorBox = $("error");
 
-    const LOCAL_API = "http://127.0.0.1:8765";
-    let API_BASE = "";
-    let HOSTED = false;
-
-    async function localEngineUp() {
-      try {
-        const response = await fetch(`${LOCAL_API}/api/state`, {
-          signal: AbortSignal.timeout(2000),
-        });
-        return response.ok;
-      } catch (err) {
-        return false;
-      }
-    }
-
-    async function resolveApiBase() {
+    function resolveApiBase() {
       const fromQuery = new URLSearchParams(location.search).get("api");
       if (fromQuery) return fromQuery.replace(/\/$/, "");
-      const onLocalhost = location.hostname === "127.0.0.1" || location.hostname === "localhost";
-      if (onLocalhost) return "";
-      if (await localEngineUp()) return LOCAL_API;
-      if (/(^|\.)github\.io$/.test(location.hostname)) return LOCAL_API;
+      if (/(^|\.)github\.io$/.test(location.hostname)) return "http://127.0.0.1:8765";
       return "";
     }
+
+    const API_BASE = resolveApiBase();
+    const HOSTED = Boolean(API_BASE);
 
     function showError(message) {
       if (!message) {
@@ -579,11 +564,7 @@
       }
     }
 
-    (async () => {
-      API_BASE = await resolveApiBase();
-      HOSTED = Boolean(API_BASE);
-      await poll();
-    })();
+    poll();
   </script>
 </body>
 </html>

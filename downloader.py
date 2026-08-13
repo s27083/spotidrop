@@ -112,9 +112,7 @@ def _auth_options() -> dict:
         options["cookiefile"] = str(path)
         return options
     browser = (os.environ.get("YTDLP_BROWSER") or "").strip().lower()
-    if not browser and not os.environ.get("RAILWAY_ENVIRONMENT"):
-        browser = "chrome"
-    if browser and browser != "none":
+    if browser:
         options["cookiesfrombrowser"] = (browser,)
     return options
 
