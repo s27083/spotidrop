@@ -96,12 +96,27 @@ class GuiApiTests(unittest.TestCase):
         self.assertNotIn("folderze Pobrane".encode(), body)
         self.assertNotIn(b"setInterval(poll, 400)", body)
         self.assertIn(b"startPolling", body)
+        self.assertIn(b"/api/state?light=1", body)
+        self.assertIn(b"setTimeout(runPoll", body)
         self.assertIn(b"/api/file/", body)
         self.assertIn(b"offerBrowserDownload", body)
         self.assertIn(b"waiting.add", body)
         self.assertNotIn(b">Format<", body)
         self.assertNotIn(b">Folder<", body)
         self.assertNotIn("Otwórz folder".encode(), body)
+
+    def test_state_light_omits_track_payload(self) -> None:
+        gui.STATE.tracks = [Track(title="Get Lucky", artist="Daft Punk", cover_url="https://i.scdn.co/x")]
+        gui.STATE.statuses = ["OK"]
+        status, body = self._get("/api/state?light=1")
+        self.assertEqual(status, 200)
+        data = json.loads(body.decode("utf-8"))
+        self.assertEqual(data["statuses"], ["OK"])
+        self.assertNotIn("tracks", data)
+        status, full = self._get("/api/state")
+        self.assertEqual(status, 200)
+        full_data = json.loads(full.decode("utf-8"))
+        self.assertEqual(len(full_data["tracks"]), 1)
 
     def test_cors_preflight_from_github_pages(self) -> None:
         conn = HTTPConnection("127.0.0.1", self.port)

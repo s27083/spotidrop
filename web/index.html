@@ -234,6 +234,7 @@
     let lastTableKey = "";
     let listSig = "";
     let selected = new Set();
+    let tracksCache = [];
     const waiting = new Set();
     const offered = new Set();
 
@@ -277,7 +278,21 @@
       return "";
     }
 
+    function hydrateState(state) {
+      if (Array.isArray(state.tracks)) {
+        tracksCache = state.tracks;
+        return state;
+      }
+      const statuses = state.statuses || [];
+      state.tracks = tracksCache.map((track, index) => ({
+        ...track,
+        status: statuses[index] ?? track.status,
+      }));
+      return state;
+    }
+
     function render(state) {
+      state = hydrateState(state);
       $("status").textContent = state.status;
       $("bar").max = Math.max(state.total, 1);
       $("bar").value = state.current;
@@ -347,13 +362,26 @@
     }
 
     function offerBrowserDownload(index) {
-      const link = document.createElement("a");
-      link.href = `${API_BASE}/api/file/${index}`;
-      link.download = "";
-      link.rel = "noopener";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      fetch(`${API_BASE}/api/file/${index}`)
+        .then((response) => {
+          if (!response.ok) throw new Error("Brak pliku");
+          const header = response.headers.get("Content-Disposition") || "";
+          const encoded = /filename\*=UTF-8''([^;]+)/i.exec(header);
+          const quoted = /filename="([^"]+)"/i.exec(header);
+          const name = decodeURIComponent(encoded?.[1] || quoted?.[1] || "track.mp3");
+          return response.blob().then((blob) => ({ blob, name }));
+        })
+        .then(({ blob, name }) => {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = name;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+        })
+        .catch(() => {});
     }
 
     function offerReadyDownloads(tracks) {
@@ -473,16 +501,47 @@
     };
 
     let pollTimer = null;
+    let pollInFlight = false;
 
     function stopPolling() {
       if (!pollTimer) return;
-      clearInterval(pollTimer);
+      clearTimeout(pollTimer);
       pollTimer = null;
     }
 
     function startPolling() {
-      if (pollTimer) return;
-      pollTimer = setInterval(poll, 800);
+      if (pollTimer || pollInFlight) return;
+      pollTimer = setTimeout(runPoll, 1500);
+    }
+
+    async function runPoll() {
+      pollTimer = null;
+      if (pollInFlight) {
+        startPolling();
+        return;
+      }
+      pollInFlight = true;
+      let keepGoing = false;
+      try {
+        const state = await api("/api/state?light=1");
+        if (!state.ffmpeg_error) showError("");
+        render(state);
+        keepGoing = Boolean(state.busy);
+      } catch (err) {
+        $("download").disabled = true;
+        $("downloadAll").disabled = true;
+        $("downloadSingle").disabled = true;
+        $("stop").disabled = true;
+        $("loadSpotify").disabled = true;
+        if (HOSTED) {
+          showError("Żeby pobierać, odpal na tym komputerze: python gui.py");
+        } else {
+          showError("Brak połączenia. Uruchom ponownie: python gui.py");
+        }
+      } finally {
+        pollInFlight = false;
+        if (keepGoing) startPolling();
+      }
     }
 
     async function poll() {
@@ -491,14 +550,12 @@
         if (!state.ffmpeg_error) showError("");
         render(state);
         if (state.busy) startPolling();
-        else stopPolling();
       } catch (err) {
         $("download").disabled = true;
         $("downloadAll").disabled = true;
         $("downloadSingle").disabled = true;
         $("stop").disabled = true;
         $("loadSpotify").disabled = true;
-        stopPolling();
         if (HOSTED) {
           showError("Żeby pobierać, odpal na tym komputerze: python gui.py");
         } else {

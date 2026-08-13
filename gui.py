@@ -10,7 +10,7 @@ import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import quote, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from csv_parser import Track
 from downloader import (
@@ -76,9 +76,9 @@ class AppState:
             return str(exc)
         return ""
 
-    def snapshot(self) -> dict:
+    def snapshot(self, *, light: bool = False) -> dict:
         with self.lock:
-            return {
+            payload = {
                 "busy": self.busy,
                 "ffmpeg_error": self.ffmpeg_error,
                 "output_dir": self.output_dir,
@@ -90,17 +90,21 @@ class AppState:
                 "failed": self.failed,
                 "csv_name": self.csv_name,
                 "log": self.log_lines[-200:],
-                "tracks": [
-                    {
-                        "artist": track.artist,
-                        "title": track.title,
-                        "album": track.album,
-                        "cover_url": track.cover_url,
-                        "status": self.statuses[index] if index < len(self.statuses) else "—",
-                    }
-                    for index, track in enumerate(self.tracks)
-                ],
             }
+            if light:
+                payload["statuses"] = list(self.statuses)
+                return payload
+            payload["tracks"] = [
+                {
+                    "artist": track.artist,
+                    "title": track.title,
+                    "album": track.album,
+                    "cover_url": track.cover_url,
+                    "status": self.statuses[index] if index < len(self.statuses) else "—",
+                }
+                for index, track in enumerate(self.tracks)
+            ]
+            return payload
 
     def log(self, message: str) -> None:
         with self.lock:
@@ -376,9 +380,12 @@ class Handler(BaseHTTPRequestHandler):
         return json.loads(raw.decode("utf-8"))
 
     def do_GET(self) -> None:  # noqa: N802
-        path = unquote(urlparse(self.path).path)
+        parsed = urlparse(self.path)
+        path = unquote(parsed.path)
         if path == "/api/state":
-            status, body = _json_bytes(STATE.snapshot())
+            query = parse_qs(parsed.query)
+            light = (query.get("light") or [""])[0] in {"1", "true"}
+            status, body = _json_bytes(STATE.snapshot(light=light))
             self._send(status, body, "application/json; charset=utf-8")
             return
         cover_match = COVER_ROUTE.match(path)
