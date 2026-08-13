@@ -20,6 +20,7 @@ class OriginAllowedTests(unittest.TestCase):
     def test_github_pages_and_localhost(self) -> None:
         self.assertTrue(gui.origin_allowed("https://kamil.github.io"))
         self.assertTrue(gui.origin_allowed("http://127.0.0.1:8765"))
+        self.assertTrue(gui.origin_allowed("https://spotidrop.up.railway.app"))
         self.assertFalse(gui.origin_allowed("https://evil.example"))
 
     def test_saves_mp3_via_browser_download(self) -> None:
@@ -88,6 +89,7 @@ class GuiApiTests(unittest.TestCase):
         self.assertNotIn(b"Kobosil", body)
         self.assertIn(b"API_BASE", body)
         self.assertIn(b"127.0.0.1:8765", body)
+        self.assertIn(b"localEngineUp", body)
         self.assertIn(b'class="cover"', body)
         self.assertIn(b"const src = remote || local", body)
         self.assertIn(b"data-dl", body)

@@ -77,6 +77,23 @@ class DownloaderPathTests(unittest.TestCase):
                     "mp3",
                 )
             self.assertEqual(options["cookiefile"], str(cookies))
+            self.assertNotIn("cookiesfrombrowser", options)
+
+    def test_ydl_skips_browser_cookies_on_railway(self) -> None:
+        missing = Path("/tmp/spotidrop-missing-cookies.txt")
+        with patch.dict(
+            os.environ,
+            {
+                "RAILWAY_ENVIRONMENT": "production",
+                "YTDLP_COOKIES": str(missing),
+                "YTDLP_COOKIES_CONTENT": "",
+                "YTDLP_BROWSER": "",
+            },
+            clear=False,
+        ):
+            options = _ydl_options(Path("/tmp"), Track(title="T", artist="A"), "mp3")
+        self.assertNotIn("cookiefile", options)
+        self.assertNotIn("cookiesfrombrowser", options)
 
     def test_embed_spotify_cover_without_url_deletes_sidecar(self) -> None:
         track = Track(title="Song", artist="Artist")
