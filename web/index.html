@@ -172,7 +172,7 @@
 <body>
   <div class="wrap">
     <h1>Spoti<span class="brand-mark">drop</span></h1>
-    <p class="sub">Playlista, album albo konkretny utwór ze Spotify — albo artysta i tytuł. Chrome zapisze MP3 w folderze Pobrane.</p>
+    <p class="sub">Playlista, album albo konkretny utwór ze Spotify — albo artysta i tytuł.</p>
     <div id="error" class="error"></div>
 
     <section class="card">
@@ -458,6 +458,7 @@
           offered.delete(index);
         });
         render(state);
+        startPolling();
       } catch (err) {
         showError(err.message);
       }
@@ -471,17 +472,33 @@
       await api("/api/stop", { method: "POST", body: "{}" });
     };
 
+    let pollTimer = null;
+
+    function stopPolling() {
+      if (!pollTimer) return;
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+
+    function startPolling() {
+      if (pollTimer) return;
+      pollTimer = setInterval(poll, 800);
+    }
+
     async function poll() {
       try {
         const state = await api("/api/state");
         if (!state.ffmpeg_error) showError("");
         render(state);
+        if (state.busy) startPolling();
+        else stopPolling();
       } catch (err) {
         $("download").disabled = true;
         $("downloadAll").disabled = true;
         $("downloadSingle").disabled = true;
         $("stop").disabled = true;
         $("loadSpotify").disabled = true;
+        stopPolling();
         if (HOSTED) {
           showError("Żeby pobierać, odpal na tym komputerze: python gui.py");
         } else {
@@ -491,7 +508,6 @@
     }
 
     poll();
-    setInterval(poll, 400);
   </script>
 </body>
 </html>
