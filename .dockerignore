@@ -1,0 +1,9 @@
+.venv
+.git
+.cache
+downloads
+__pycache__
+*.pyc
+.DS_Store
+.cursor
+agent-transcripts

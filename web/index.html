@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spotidrop</title>
+  <style>
+    :root {
+      --bg: #0b0b0b;
+      --card: #181818;
+      --line: #2a2a2a;
+      --text: #ffffff;
+      --muted: #a7a7a7;
+      --accent: #1db954;
+      --accent-2: #1ed760;
+      --ink: #000000;
+      --ok: #1db954;
+      --run: #509bf5;
+      --fail: #f15e6c;
+      --shadow: 0 18px 50px rgba(0, 0, 0, .45);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(900px 420px at 8% -12%, rgba(29, 185, 84, .18), transparent 55%),
+        radial-gradient(700px 380px at 110% 0%, rgba(80, 155, 245, .08), transparent 50%),
+        var(--bg);
+      color: var(--text);
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 48px; }
+    .cover {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      object-fit: cover;
+      display: block;
+      background: #121212;
+      flex: none;
+    }
+    .cover-ph {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      background: #121212;
+      border: 1px solid var(--line);
+      flex: none;
+    }
+    .track-art {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .row-dl {
+      padding: 7px 11px;
+      font-size: 12px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    .track-list {
+      overflow: auto;
+      max-height: min(72vh, 760px);
+      min-height: 480px;
+      margin-top: 12px;
+    }
+    h1 { font-size: 28px; letter-spacing: -.03em; margin: 0 0 6px; }
+    .sub { color: var(--muted); margin: 0 0 24px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
+    .label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+    }
+    .pills { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .pill {
+      border: 1px solid var(--line);
+      background: #121212;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+    .pill.active { background: var(--accent); border-color: var(--accent); color: var(--ink); }
+    .row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .row label { width: 86px; color: var(--muted); font-size: 14px; flex: none; }
+    input[type="text"], select {
+      flex: 1;
+      width: 100%;
+      background: #121212;
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .primary { background: var(--accent); color: var(--ink); }
+    .ghost { background: #121212; color: var(--text); border: 1px solid var(--line); }
+    .progress-wrap { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+    progress { flex: 1; height: 10px; accent-color: var(--accent); }
+    .status { color: var(--muted); font-size: 13px; white-space: nowrap; }
+    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    th { color: var(--muted); font-size: 12px; font-weight: 600; }
+    .badge {
+      display: inline-block;
+      min-width: 64px;
+      text-align: center;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 650;
+      background: #121212;
+      color: var(--muted);
+    }
+    .badge.ok { color: var(--ok); background: rgba(29, 185, 84, .14); }
+    .badge.run { color: var(--run); background: rgba(80, 155, 245, .14); }
+    .badge.fail { color: var(--fail); background: rgba(241, 94, 108, .14); }
+    .log {
+      height: 160px;
+      overflow: auto;
+      background: #121212;
+      border-radius: 10px;
+      padding: 12px;
+      font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #c9cdd6;
+      white-space: pre-wrap;
+    }
+    .error {
+      background: rgba(241, 94, 108, .12);
+      border: 1px solid rgba(241, 94, 108, .35);
+      color: var(--fail);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .hidden { display: none !important; }
+    .empty { color: var(--muted); padding: 18px 8px; text-align: center; }
+    .check { width: 18px; height: 18px; accent-color: var(--accent); }
+    .list-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0 0; }
+    .count { color: var(--muted); font-size: 13px; margin-left: auto; }
+    .brand-mark { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Spoti<span class="brand-mark">drop</span></h1>
+    <p class="sub">Playlista, album albo konkretny utwór ze Spotify — albo artysta i tytuł. Chrome zapisze MP3 w folderze Pobrane.</p>
+    <div id="error" class="error"></div>
+
+    <section class="card">
+      <div class="label">Źródło</div>
+      <div class="pills">
+        <button class="pill active" id="modeLink" type="button">Link Spotify</button>
+        <button class="pill" id="modeSingle" type="button">Artysta i tytuł</button>
+      </div>
+      <div id="linkBox">
+        <div class="row"><label>Link</label><input id="spotifyUrl" type="text" placeholder="https://open.spotify.com/playlist/... albo /track/..." /></div>
+        <div class="actions">
+          <button class="primary" id="loadSpotify" type="button">Wczytaj</button>
+        </div>
+      </div>
+      <div id="singleBox" class="hidden">
+        <div class="row"><label>Artysta</label><input id="artist" type="text" placeholder="np. Avicii" /></div>
+        <div class="row"><label>Tytuł</label><input id="title" type="text" placeholder="np. Wake Me Up" /></div>
+        <div class="actions">
+          <button class="primary" id="downloadSingle" type="button">Pobierz</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="label">Utwory</div>
+      <div class="progress-wrap">
+        <progress id="bar" max="1" value="0"></progress>
+        <div class="status" id="status">Gotowe</div>
+      </div>
+      <div class="list-actions">
+        <button class="ghost" id="selectAll" type="button">Zaznacz wszystkie</button>
+        <button class="ghost" id="selectNone" type="button">Odznacz</button>
+        <button class="primary" id="download" type="button">Pobierz zaznaczone</button>
+        <button class="ghost" id="downloadAll" type="button">Pobierz wszystkie</button>
+        <button class="ghost" id="stop" type="button" disabled>Zatrzymaj</button>
+        <div class="count" id="selectedCount">Zaznaczone: 0</div>
+      </div>
+      <div class="track-list">
+        <table>
+          <thead>
+            <tr><th></th><th></th><th>Artysta</th><th>Tytuł</th><th>Album</th><th>Status</th></tr>
+          </thead>
+          <tbody id="tracks">
+            <tr><td class="empty" colspan="6">Wklej link Spotify albo podaj artystę i tytuł.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="label">Log</div>
+      <div class="log" id="log"></div>
+    </section>
+  </div>
+
+  <script>
+    let mode = "link";
+    let lastLogLength = 0;
+    let lastTableKey = "";
+    let listSig = "";
+    let selected = new Set();
+    const waiting = new Set();
+    const offered = new Set();
+
+    const $ = (id) => document.getElementById(id);
+    const errorBox = $("error");
+
+    function resolveApiBase() {
+      const fromQuery = new URLSearchParams(location.search).get("api");
+      if (fromQuery) return fromQuery.replace(/\/$/, "");
+      if (/(^|\.)github\.io$/.test(location.hostname)) return "http://127.0.0.1:8765";
+      return "";
+    }
+
+    const API_BASE = resolveApiBase();
+    const HOSTED = Boolean(API_BASE);
+
+    function showError(message) {
+      if (!message) {
+        errorBox.style.display = "none";
+        errorBox.textContent = "";
+        return;
+      }
+      errorBox.style.display = "block";
+      errorBox.textContent = message;
+    }
+
+    async function api(path, options = {}) {
+      const response = await fetch(API_BASE + path, {
+        headers: { "Content-Type": "application/json" },
+        ...options,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Błąd serwera");
+      return data;
+    }
+
+    function badgeClass(status) {
+      if (status === "OK") return "ok";
+      if (status === "szukam") return "run";
+      if (status === "błąd") return "fail";
+      return "";
+    }
+
+    function render(state) {
+      $("status").textContent = state.status;
+      $("bar").max = Math.max(state.total, 1);
+      $("bar").value = state.current;
+      $("download").disabled = state.busy;
+      $("downloadAll").disabled = state.busy;
+      $("downloadSingle").disabled = state.busy;
+      $("stop").disabled = !state.busy;
+      $("loadSpotify").disabled = state.busy;
+      if (state.ffmpeg_error) showError(state.ffmpeg_error);
+
+      syncSelection(state.tracks);
+      const tableKey = JSON.stringify([state.busy, state.tracks.map((track) => [track.artist, track.title, track.status, track.cover_url])]);
+      if (tableKey !== lastTableKey) {
+        lastTableKey = tableKey;
+        renderTracks(state.tracks, state.busy);
+      }
+      $("selectedCount").textContent = `Zaznaczone: ${selected.size} / ${state.tracks.length}`;
+      offerReadyDownloads(state.tracks);
+
+      const logText = (state.log || []).join("\n");
+      if ((state.log || []).length !== lastLogLength) {
+        $("log").textContent = logText;
+        $("log").scrollTop = $("log").scrollHeight;
+        lastLogLength = (state.log || []).length;
+      }
+    }
+
+    function syncSelection(tracks) {
+      const sig = tracks.map((track) => `${track.artist}\t${track.title}`).join("\n");
+      if (sig !== listSig) {
+        listSig = sig;
+        selected = new Set(tracks.map((_, index) => index));
+      }
+    }
+
+    function coverHtml(track, index) {
+      const remote = track.cover_url || "";
+      const local = track.status === "OK" ? `${API_BASE}/api/cover/${index}` : "";
+      const src = remote || local;
+      if (!src) return '<div class="cover-ph" aria-hidden="true"></div>';
+      const fallback = remote && local
+        ? ` onerror="this.onerror=null;this.src='${escapeHtml(local)}'"`
+        : ` onerror="this.outerHTML='<div class=\\'cover-ph\\'></div>'"`;
+      return `<img class="cover" src="${escapeHtml(src)}" alt="" loading="lazy"${fallback} />`;
+    }
+
+    function renderTracks(tracks, busy) {
+      if (tracks.length === 0) {
+        $("tracks").innerHTML = '<tr><td class="empty" colspan="6">Wklej link Spotify albo podaj artystę i tytuł.</td></tr>';
+        return;
+      }
+      $("tracks").innerHTML = tracks.map((track, index) => `
+        <tr>
+          <td><input class="check" type="checkbox" data-i="${index}" ${selected.has(index) ? "checked" : ""} /></td>
+          <td>
+            <div class="track-art">
+              ${coverHtml(track, index)}
+              <button class="row-dl" type="button" data-dl="${index}" ${busy || track.status === "szukam" ? "disabled" : ""}>Pobierz</button>
+            </div>
+          </td>
+          <td>${escapeHtml(track.artist)}</td>
+          <td>${escapeHtml(track.title)}</td>
+          <td>${escapeHtml(track.album)}</td>
+          <td><span class="badge ${badgeClass(track.status)}">${escapeHtml(track.status)}</span></td>
+        </tr>
+      `).join("");
+    }
+
+    function offerBrowserDownload(index) {
+      const link = document.createElement("a");
+      link.href = `${API_BASE}/api/file/${index}`;
+      link.download = "";
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+
+    function offerReadyDownloads(tracks) {
+      tracks.forEach((track, index) => {
+        if (!waiting.has(index) || track.status !== "OK" || offered.has(index)) return;
+        offered.add(index);
+        waiting.delete(index);
+        offerBrowserDownload(index);
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function setMode(next) {
+      mode = next;
+      $("modeLink").classList.toggle("active", next === "link");
+      $("modeSingle").classList.toggle("active", next === "single");
+      $("linkBox").classList.toggle("hidden", next !== "link");
+      $("singleBox").classList.toggle("hidden", next !== "single");
+    }
+
+    $("modeLink").onclick = () => setMode("link");
+    $("modeSingle").onclick = () => setMode("single");
+
+    $("spotifyUrl").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        $("loadSpotify").click();
+      }
+    });
+
+    $("loadSpotify").onclick = async () => {
+      try {
+        showError("");
+        $("loadSpotify").disabled = true;
+        const state = await api("/api/spotify", {
+          method: "POST",
+          body: JSON.stringify({ url: $("spotifyUrl").value }),
+        });
+        render(state);
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        $("loadSpotify").disabled = false;
+      }
+    };
+
+    $("tracks").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-dl]");
+      if (!button || button.disabled) return;
+      startDownload([Number(button.dataset.dl)]);
+    });
+
+    $("tracks").addEventListener("change", (event) => {
+      const target = event.target;
+      if (!target.matches("input[type=checkbox][data-i]")) return;
+      const index = Number(target.dataset.i);
+      if (target.checked) selected.add(index);
+      else selected.delete(index);
+      $("selectedCount").textContent = `Zaznaczone: ${selected.size}`;
+    });
+
+    $("selectAll").onclick = () => {
+      document.querySelectorAll("#tracks input[data-i]").forEach((box) => {
+        box.checked = true;
+        selected.add(Number(box.dataset.i));
+      });
+      $("selectedCount").textContent = `Zaznaczone: ${selected.size}`;
+    };
+
+    $("selectNone").onclick = () => {
+      selected = new Set();
+      document.querySelectorAll("#tracks input[data-i]").forEach((box) => {
+        box.checked = false;
+      });
+      $("selectedCount").textContent = "Zaznaczone: 0";
+    };
+
+    async function startDownload(indices) {
+      try {
+        showError("");
+        const state = await api("/api/start", {
+          method: "POST",
+          body: JSON.stringify({
+            mode,
+            artist: $("artist").value,
+            title: $("title").value,
+            indices,
+          }),
+        });
+        const waitList = indices == null
+          ? state.tracks.map((_, index) => index)
+          : indices;
+        waitList.forEach((index) => {
+          waiting.add(index);
+          offered.delete(index);
+        });
+        render(state);
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    $("download").onclick = () => startDownload([...selected].sort((a, b) => a - b));
+    $("downloadAll").onclick = () => startDownload(null);
+    $("downloadSingle").onclick = () => startDownload(null);
+
+    $("stop").onclick = async () => {
+      await api("/api/stop", { method: "POST", body: "{}" });
+    };
+
+    async function poll() {
+      try {
+        const state = await api("/api/state");
+        if (!state.ffmpeg_error) showError("");
+        render(state);
+      } catch (err) {
+        $("download").disabled = true;
+        $("downloadAll").disabled = true;
+        $("downloadSingle").disabled = true;
+        $("stop").disabled = true;
+        $("loadSpotify").disabled = true;
+        if (HOSTED) {
+          showError("Żeby pobierać, odpal na tym komputerze: python gui.py");
+        } else {
+          showError("Brak połączenia. Uruchom ponownie: python gui.py");
+        }
+      }
+    }
+
+    poll();
+    setInterval(poll, 400);
+  </script>
+</body>
+</html>
