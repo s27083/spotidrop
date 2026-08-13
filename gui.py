@@ -19,6 +19,7 @@ from downloader import (
     ensure_ffmpeg,
     existing_file,
     extract_cover_bytes,
+    install_cookies_from_env,
 )
 from spotify import SpotifyFetchError, fetch_spotify_tracks
 
@@ -427,6 +428,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def run_gui(open_browser: bool = True) -> None:
+    cookies = install_cookies_from_env()
+    print(f"YouTube cookies: {'tak' if cookies else 'brak'}", flush=True)
     host, port = bind_address()
     httpd = None
     chosen = port

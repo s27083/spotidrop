@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import tempfile
@@ -63,6 +64,19 @@ class DownloaderPathTests(unittest.TestCase):
         keys = [item["key"] for item in options["postprocessors"]]
         self.assertNotIn("EmbedThumbnail", keys)
         self.assertNotIn("FFmpegThumbnailsConvertor", keys)
+        self.assertIn("android", options["extractor_args"]["youtube"]["player_client"])
+
+    def test_ydl_uses_cookiefile_when_present(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            cookies = Path(raw) / "cookies.txt"
+            cookies.write_text("# Netscape HTTP Cookie File\n", encoding="utf-8")
+            with patch.dict(os.environ, {"YTDLP_COOKIES": str(cookies)}, clear=False):
+                options = _ydl_options(
+                    Path("/tmp"),
+                    Track(title="T", artist="A"),
+                    "mp3",
+                )
+            self.assertEqual(options["cookiefile"], str(cookies))
 
     def test_embed_spotify_cover_without_url_deletes_sidecar(self) -> None:
         track = Track(title="Song", artist="Artist")

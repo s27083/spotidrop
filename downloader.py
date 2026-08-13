@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -28,6 +29,15 @@ COVER_UA = (
 
 class DownloadFailed(Exception):
     pass
+
+
+APP_DIR = Path(__file__).resolve().parent
+DEFAULT_COOKIES = APP_DIR / "cookies.txt"
+BOT_HINT = (
+    "YouTube blokuje to IP (na Railway tak jest prawie zawsze). "
+    "Wyeksportuj cookies z Chrome (zalogowany YouTube) do cookies.txt "
+    "i wklej zawartość jako zmienną YTDLP_COOKIES_CONTENT."
+)
 
 
 def _sanitize_filename(name: str) -> str:
@@ -71,12 +81,53 @@ def existing_cover(output_dir: Path, track: Track) -> Path | None:
     return None
 
 
+def cookies_path() -> Path:
+    return Path(os.environ.get("YTDLP_COOKIES", str(DEFAULT_COOKIES)))
+
+
+def install_cookies_from_env() -> Path | None:
+    raw = os.environ.get("YTDLP_COOKIES_CONTENT", "").strip()
+    path = cookies_path()
+    if raw:
+        path.write_text(raw if raw.endswith("\n") else f"{raw}\n", encoding="utf-8")
+        try:
+            path.chmod(0o600)
+        except OSError:
+            pass
+    if path.is_file() and path.stat().st_size > 0:
+        return path
+    return None
+
+
+def _auth_options() -> dict:
+    options: dict = {
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "ios", "tv", "web"],
+            }
+        }
+    }
+    path = install_cookies_from_env()
+    if path is not None:
+        options["cookiefile"] = str(path)
+        return options
+    browser = (os.environ.get("YTDLP_BROWSER") or "").strip().lower()
+    if browser:
+        options["cookiesfrombrowser"] = (browser,)
+    return options
+
+
+def _is_bot_block(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return "not a bot" in text or "cookies-from-browser" in text or "sign in to confirm" in text
+
+
 def _ydl_options(
     output_dir: Path,
     track: Track,
     audio_format: str,
 ) -> dict:
-    return {
+    options = {
         "format": "bestaudio/best",
         "quiet": True,
         "no_warnings": True,
@@ -99,6 +150,8 @@ def _ydl_options(
             "FFmpegExtractAudio": ["-ar", "44100"],
         },
     }
+    options.update(_auth_options())
+    return options
 
 
 def _search_queries(track: Track) -> list[str]:
@@ -120,6 +173,7 @@ def _extract_search_entries(url: str) -> list[dict]:
         "playlistend": 8,
         "ignoreerrors": True,
     }
+    options.update(_auth_options())
     with YoutubeDL(options) as ydl:
         info = ydl.extract_info(url, download=False)
     if not info:
@@ -392,6 +446,8 @@ def download_track(
         _embed_cover_safe(output_dir, track, found, log)
         return found
 
+    if last_error and _is_bot_block(last_error):
+        raise DownloadFailed(f"Nie udało się pobrać: {track.display_name()}. {BOT_HINT}")
     detail = f" ({last_error})" if last_error else ""
     raise DownloadFailed(f"Nie udało się pobrać: {track.display_name()}{detail}")
 
